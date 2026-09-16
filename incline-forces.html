@@ -1,0 +1,1511 @@
+<title>方眼で見る斜面の力</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap">
+<style>
+:root{
+  --paper:#E9EEF0; --surface:#FBFCFD; --panel:#F2F5F6; --line:#D3DDE1; --line-2:#BECBD1;
+  --ink:#16222B; --ink-2:#4C5F6A; --ink-3:#7A8B94;
+  --grid:#C9D8DE; --grid-major:#AEC2CA; --grid-axis:#93A8B1;
+  --tilt:#C08415;
+  --grav:#2C6DB0; --inertia:#B4552D; --normal:#17806A; --vel:#6D4C9F; --ang:#CE3B4B; --fric:#A31B72;
+  --solid:#F5F8F9; --hatch:#B9C8CE;
+  --focus:#2C6DB0;
+  --shadow:0 1px 2px rgba(20,40,50,.06),0 8px 24px rgba(20,40,50,.07);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1418; --surface:#141C21; --panel:#182228; --line:#26343B; --line-2:#33454E;
+    --ink:#E4ECEF; --ink-2:#A3B4BC; --ink-3:#788B94;
+    --grid:#243239; --grid-major:#31454E; --grid-axis:#3E555F;
+    --tilt:#E0AC3E;
+    --grav:#63A7E6; --inertia:#E68A5C; --normal:#43C0A2; --vel:#AE8CE0; --ang:#FF7C86; --fric:#F183C8;
+    --solid:#1B252B; --hatch:#33454E;
+    --focus:#63A7E6;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1418; --surface:#141C21; --panel:#182228; --line:#26343B; --line-2:#33454E;
+  --ink:#E4ECEF; --ink-2:#A3B4BC; --ink-3:#788B94;
+  --grid:#243239; --grid-major:#31454E; --grid-axis:#3E555F;
+  --tilt:#E0AC3E;
+  --grav:#63A7E6; --inertia:#E68A5C; --normal:#43C0A2; --vel:#AE8CE0; --ang:#FF7C86; --fric:#F183C8;
+  --solid:#1B252B; --hatch:#33454E;
+  --focus:#63A7E6;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  font-size:14px; line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+.num{font-family:"STIX Two Text",Georgia,"Times New Roman",serif; font-variant-numeric:tabular-nums;}
+.var{font-family:"STIX Two Text",Georgia,serif; font-style:italic;}
+
+.app{display:grid; grid-template-rows:auto 1fr; height:100vh; height:100dvh; min-height:520px;}
+
+header{
+  display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  padding:10px 18px; background:var(--surface); border-bottom:1px solid var(--line);
+}
+.brand{display:flex; align-items:baseline; gap:10px; margin-right:auto;}
+.brand h1{margin:0; font-size:16px; font-weight:700; letter-spacing:.02em; text-wrap:balance;}
+.brand span{font-size:11.5px; color:var(--ink-3); letter-spacing:.06em;}
+.tabs{display:flex; gap:4px; background:var(--panel); padding:3px; border-radius:9px; border:1px solid var(--line);}
+.tabs button{
+  font:inherit; font-size:13px; color:var(--ink-2); background:none; border:0; cursor:pointer;
+  padding:6px 13px; border-radius:7px; white-space:nowrap;
+}
+.tabs button[aria-selected="true"]{background:var(--surface); color:var(--ink); font-weight:700; box-shadow:var(--shadow);}
+.tabs button:hover{color:var(--ink);}
+
+.main{display:grid; grid-template-columns:minmax(0,1fr) 336px; min-height:0;}
+.stage-col{display:grid; grid-template-rows:minmax(0,1fr) auto; min-height:0; min-width:0;}
+.canvas-wrap{position:relative; min-height:0; background:var(--surface); margin:12px 0 0 12px; border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+canvas{display:block; width:100%; height:100%; touch-action:none;}
+.flag{
+  position:absolute; left:14px; top:12px; display:flex; gap:8px; align-items:center;
+  font-size:12px; padding:5px 10px; border-radius:999px; background:var(--panel);
+  border:1px solid var(--line); color:var(--ink-2);
+}
+.flag.warn{color:var(--inertia); border-color:color-mix(in srgb, var(--inertia) 40%, var(--line));}
+
+.stagebar{padding:12px 12px 14px 12px; display:flex; flex-direction:column; gap:9px;}
+.steps{display:flex; align-items:stretch; gap:6px;}
+.steps button{
+  flex:1 1 0; min-width:0; font:inherit; cursor:pointer; text-align:left;
+  background:var(--surface); border:1px solid var(--line); border-radius:9px;
+  padding:7px 9px 8px; color:var(--ink-3); display:grid; gap:1px;
+}
+.steps button b{font-size:12.5px; font-weight:500; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;}
+.steps button i{font-style:normal; font-size:10px; letter-spacing:.14em; color:var(--ink-3);}
+.steps button[aria-current="true"]{border-color:var(--ang); background:color-mix(in srgb, var(--ang) 8%, var(--surface));}
+.steps button[aria-current="true"] b{color:var(--ink); font-weight:700;}
+.steps button[aria-current="true"] i{color:var(--ang);}
+.steps button.done{color:var(--ink-2);}
+.steps button.done b{color:var(--ink-2);}
+.navrow{display:flex; align-items:center; gap:10px;}
+.prompt{
+  flex:1; min-width:0; font-size:13px; color:var(--ink-2); background:var(--panel);
+  border:1px solid var(--line); border-radius:9px; padding:8px 12px; text-wrap:pretty;
+}
+.navbtn{
+  font:inherit; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;
+  padding:9px 16px; border-radius:9px; border:1px solid var(--line-2); background:var(--surface); color:var(--ink);
+}
+.navbtn.primary{background:var(--ink); color:var(--surface); border-color:var(--ink);}
+.navbtn:disabled{opacity:.38; cursor:default;}
+.navbtn:not(:disabled):hover{border-color:var(--ink-3);}
+
+aside{
+  min-height:0; overflow-y:auto; padding:12px 12px 20px; display:flex; flex-direction:column; gap:10px;
+}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 13px 14px;}
+.card h2{
+  margin:0 0 10px; font-size:10.5px; font-weight:700; letter-spacing:.16em; color:var(--ink-3);
+}
+.field{display:grid; gap:5px; margin-bottom:12px;}
+.field:last-child{margin-bottom:0;}
+.field .lab{display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:12.5px; color:var(--ink-2);}
+.field .val{font-family:"STIX Two Text",Georgia,serif; font-variant-numeric:tabular-nums; font-size:15px; color:var(--ink); font-weight:600;}
+input[type=range]{
+  -webkit-appearance:none; appearance:none; width:100%; height:22px; background:none; cursor:pointer; margin:0;
+}
+input[type=range]::-webkit-slider-runnable-track{height:4px; border-radius:2px; background:var(--line-2);}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:18px; height:18px; margin-top:-7px; border-radius:50%;
+  background:var(--surface); border:2px solid var(--ink); box-shadow:var(--shadow);
+}
+input[type=range]::-moz-range-track{height:4px; border-radius:2px; background:var(--line-2);}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--surface);border:2px solid var(--ink);}
+input[type=range]:focus-visible{outline:2px solid var(--focus); outline-offset:3px; border-radius:4px;}
+
+.toggles{display:grid; gap:9px;}
+.tg{display:flex; align-items:center; gap:9px; font-size:12.5px; color:var(--ink-2); cursor:pointer;}
+.tg input{
+  appearance:none; -webkit-appearance:none; width:34px; height:19px; border-radius:999px; margin:0;
+  background:var(--line-2); border:0; cursor:pointer; position:relative; flex:none; transition:background .15s;
+}
+.tg input::after{
+  content:""; position:absolute; top:2px; left:2px; width:15px; height:15px; border-radius:50%;
+  background:var(--surface); transition:transform .15s;
+}
+.tg input:checked{background:var(--ang);}
+.tg input:checked::after{transform:translateX(15px);}
+.tg input:focus-visible{outline:2px solid var(--focus); outline-offset:2px;}
+.tg input:disabled{opacity:.35; cursor:default;}
+.tg.off{color:var(--ink-3);}
+
+.chips{display:flex; gap:6px; flex-wrap:wrap;}
+.chip{
+  font:inherit; font-size:12px; padding:6px 11px; border-radius:8px; cursor:pointer;
+  background:var(--panel); border:1px solid var(--line); color:var(--ink-2);
+}
+.chip:disabled{opacity:.4; cursor:default;}
+.chip[aria-pressed="true"]{background:var(--ink); color:var(--surface); border-color:var(--ink); font-weight:700;}
+.chip:hover{border-color:var(--ink-3);}
+
+.eq{display:grid; gap:7px;}
+.eq .row{display:grid; grid-template-columns:1fr auto; gap:10px; align-items:baseline; padding-bottom:7px; border-bottom:1px dashed var(--line);}
+.eq .row:last-child{border-bottom:0; padding-bottom:0;}
+.eq .row.hl{color:var(--ang);}
+.eq .k{font-size:12px; color:var(--ink-2);}
+.eq .row.hl .k{color:var(--ang); font-weight:700;}
+.eq .e{font-family:"STIX Two Text",Georgia,serif; font-variant-numeric:tabular-nums; font-size:13.5px; color:var(--ink); text-align:right; white-space:nowrap;}
+.eq .row.hl .e{color:var(--ang); font-weight:600;}
+.hint{font-size:12px; color:var(--ink-3); margin:10px 0 0; text-wrap:pretty;}
+
+.legend{display:grid; gap:7px; font-size:12px; color:var(--ink-2);}
+.legend div{display:flex; align-items:center; gap:9px;}
+.swatch{width:26px; height:0; border-top-width:3px; border-top-style:solid; flex:none;}
+.swatch.d{border-top-style:dashed; border-top-width:2px;}
+
+.muted{color:var(--ink-3); font-size:12px; text-wrap:pretty;}
+
+@media (max-width:900px){
+  .main{grid-template-columns:minmax(0,1fr);}
+  .app{height:auto; min-height:100dvh;}
+  .canvas-wrap{margin:12px 12px 0; aspect-ratio:4/3; height:auto;}
+  .canvas-wrap.tall{aspect-ratio:4/5;}
+  aside{overflow:visible;}
+  .steps button{padding:6px 6px 7px;}
+  .steps button i{display:none;}
+  .steps button b{font-size:11px; white-space:normal; overflow:visible; line-height:1.25;}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:.001ms !important;}
+}
+</style>
+
+<div class="app">
+  <header>
+    <div class="brand">
+      <h1>方眼で見る斜面の力</h1>
+      <span>角度はどこへ移るのか</span>
+    </div>
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-scene="gravity" aria-selected="true">① 重力</button>
+      <button role="tab" data-scene="inertia" aria-selected="false">② 慣性力</button>
+      <button role="tab" data-scene="projectile" aria-selected="false">③ 斜方投射</button>
+      <button role="tab" data-scene="friction" aria-selected="false">④ 摩擦</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="stage-col">
+      <div class="canvas-wrap">
+        <canvas id="cv"></canvas>
+        <div class="flag" id="flag" hidden></div>
+      </div>
+      <div class="stagebar">
+        <div class="steps" id="steps"></div>
+        <div class="navrow">
+          <button class="navbtn" id="prev">◀ 戻る</button>
+          <p class="prompt" id="prompt"></p>
+          <button class="navbtn primary" id="next">次へ ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <aside>
+      <div class="card">
+        <h2>じょうけん</h2>
+        <div class="field">
+          <div class="lab"><label for="theta">斜面の傾き <span class="var">θ</span></label><span class="val" id="thetaV">30°</span></div>
+          <input type="range" id="theta" min="5" max="75" step="1" value="30">
+        </div>
+        <div id="sceneCtl"></div>
+      </div>
+
+      <div class="card" id="fxCard" hidden>
+        <h2>なぜ θ と θ が等しいのか</h2>
+        <div class="chips" id="fxModes">
+          <button class="chip" data-fx="rot" aria-pressed="false">▶ 方眼を回す</button>
+          <button class="chip" data-fx="carry" aria-pressed="false">▶ 角を運ぶ</button>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <div class="lab"><label for="fxT">進み具合</label><span class="val" id="fxTV">100%</span></div>
+          <input type="range" id="fxT" min="0" max="100" step="1" value="100">
+        </div>
+        <div class="chips">
+          <button class="chip" id="fxBack">◀ 逆再生</button>
+          <button class="chip" id="fxPlay">▶ 再生</button>
+        </div>
+        <p class="hint" id="fxHint"></p>
+      </div>
+
+      <div class="card" id="eqCard" hidden>
+        <h2>しき</h2>
+        <div class="eq" id="eq"></div>
+        <p class="hint" id="eqHint"></p>
+      </div>
+
+      <div class="card">
+        <h2>ひょうじ</h2>
+        <div class="toggles" id="toggles">
+          <label class="tg"><input type="checkbox" id="tgTilt" checked><span>斜面基準の方眼を重ねる</span></label>
+          <label class="tg"><input type="checkbox" id="tgCompare"><span>①と②を並べて比べる</span></label>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <div class="lab"><label for="tiltA">斜面方眼の濃さ</label><span class="val" id="tiltAV">100%</span></div>
+          <input type="range" id="tiltA" min="0" max="100" step="5" value="100">
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>はんれい</h2>
+        <div class="legend">
+          <div><span class="swatch" style="border-color:var(--grav)"></span>重力（実在する力）</div>
+          <div><span class="swatch d" style="border-color:var(--grav)"></span>重力の成分（力ではない）</div>
+          <div><span class="swatch" style="border-color:var(--normal)"></span>垂直抗力</div>
+          <div><span class="swatch" style="border-color:var(--fric)"></span>摩擦力</div>
+          <div><span class="swatch" style="border-color:var(--inertia)"></span>慣性力とその成分</div>
+          <div><span class="swatch" style="border-color:var(--vel)"></span>速度・水平と鉛直の成分</div>
+          <div><span class="swatch d" style="border-color:var(--tilt)"></span>斜面基準の成分と方眼</div>
+        </div>
+        <p class="hint">実線・塗りつぶしの矢じり＝実在する力。破線・中空の矢じり＝分解した成分。成分は新しい力ではありません。</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+"use strict";
+const D2R = Math.PI/180, G = 9.8, MG = 4.0, LSLOPE = 9.0;
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const SCENES = {
+  gravity: {
+    steps:[["状況","STEP 0"],["力の矢印","STEP 1"],["分解","STEP 2"],["角度","STEP 3"],["式","STEP 4"],["つり合い","STEP 5"]],
+    prompts:[
+      "この物体に働く力は何か。矢印を描く前に予想してみよう。",
+      "重力 mg と垂直抗力 N が働く。ただし N の大きさはまだ決まっていない。",
+      "重力を斜面方向と斜面に垂直な方向に分けた。それぞれ方眼で何目盛りか読み取ろう。",
+      "新しい方眼が現れた。もとの水平・鉛直の軸は、どこへどれだけずれただろうか。",
+      "θ の値を代入して、成分の大きさを確かめよう。",
+      "垂直方向は N と打ち消し合い、斜面方向に mg sinθ だけが残る。"
+    ]
+  },
+  inertia: {
+    steps:[["状況","STEP 0"],["力の矢印","STEP 1"],["分解","STEP 2"],["角度","STEP 3"],["式","STEP 4"],["つり合い","STEP 5"]],
+    prompts:[
+      "斜面を載せた台が加速している。台に乗って見ると、物体にはどんな力が加わって見えるか。",
+      "加速度と逆向きに慣性力 ma が現れる。重力とは向きが違うことに注目。",
+      "慣性力も斜面方向と垂直方向に分けた。重力の分解と見比べてみよう。",
+      "慣性力のとき、θ はどこに現れるだろうか。重力の場合と見比べよう。",
+      "値を代入して、垂直抗力と斜面方向の合力を確かめよう。",
+      "斜面方向の合力が 0 になる加速度では、物体は斜面上で静止して見える。"
+    ]
+  },
+  friction: {
+    steps:[["状況","STEP 0"],["力の矢印","STEP 1"],["分解","STEP 2"],["角度","STEP 3"],["式","STEP 4"],["限界","STEP 5"]],
+    prompts:[
+      "ざらざらの斜面に物体を置いた。傾けていくと、いつまで静止していられるだろうか。",
+      "静止摩擦力 f が斜面上向きに現れる。大きさは「必要なだけ」で、上限がある。",
+      "重力の斜面方向の成分と摩擦力が、同じ長さで向かい合っている。だから止まっていられる。",
+      "ここでも θ は同じ場所に現れる。分解の形は重力のときと変わらない。",
+      "静止できる条件は mg sinθ ≤ μ mg cosθ、つまり tanθ ≤ μ。質量が消えることに注目。",
+      "限界を越えると、摩擦力は最大静止摩擦から動摩擦へ落ちる。グラフの段差がそれ。"
+    ]
+  },
+  projectile: {
+    steps:[["状況","STEP 0"],["初速度","STEP 1"],["分解","STEP 2"],["角度","STEP 3"],["式","STEP 4"],["重力の分解","STEP 5"]],
+    prompts:[
+      "斜面の下端から斜め上に打ち出す。どこに落ちるだろうか。",
+      "初速度 v₀ の矢印。投射角は水平から測っている。",
+      "v₀ を「水平・鉛直」と「斜面平行・垂直」の二通りに分けた。同じ矢印が別の読み方をされている。",
+      "水平から測った α と、斜面から測った α−θ。基準が変われば角度も変わる。",
+      "斜面基準で考えると、着地までの時間がすっきり求まる。",
+      "斜面基準では重力も二方向に分かれる。これが斜面上の投射を難しく見せている正体。"
+    ]
+  }
+};
+
+const state = {
+  scene:"gravity", stage:0, theta:30, k:-0.50, v0:12, alpha:55,
+  showApparent:false, compare:false, tilt:true, tiltA:1,
+  t:0, playing:false, speed:1, tEnd:1,
+  fx:{mode:"idle", t:1, dir:1, playing:false},
+  fr:{mus:0.60, muk:0.40, rigid:false, aspect:1.8, slide:0, vel:0, tip:0, maxTh:0, full:false}
+};
+const FX_DUR = 1.3;
+const ease = x => x<=0?0 : x>=1?1 : x*x*(3-2*x);
+
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+let P = {}, views = {};
+
+function palette(){
+  const s = getComputedStyle(document.documentElement);
+  const g = n => s.getPropertyValue(n).trim();
+  P = {
+    ink:g("--ink"), ink2:g("--ink-2"), ink3:g("--ink-3"),
+    grid:g("--grid"), gridM:g("--grid-major"), axis:g("--grid-axis"),
+    tilt:g("--tilt"), grav:g("--grav"), inertia:g("--inertia"),
+    normal:g("--normal"), vel:g("--vel"), ang:g("--ang"), fric:g("--fric"),
+    solid:g("--solid"), hatch:g("--hatch"), line:g("--line"), surface:g("--surface")
+  };
+}
+palette();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", palette);
+new MutationObserver(palette).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+if (document.fonts) document.fonts.ready.then(()=>{});
+
+/* ---------- geometry helpers ---------- */
+const V = (x,y)=>({x,y});
+const add=(a,b)=>V(a.x+b.x,a.y+b.y), mul=(a,s)=>V(a.x*s,a.y*s), sub=(a,b)=>V(a.x-b.x,a.y-b.y);
+const len=a=>Math.hypot(a.x,a.y);
+
+function mkView(rect){ return {rect, scale:40, ox:rect.x+rect.w/2, oy:rect.y+rect.h/2}; }
+function w2s(v,p){ return V(v.ox + p.x*v.scale, v.oy - p.y*v.scale); }
+
+function fitView(key, rect, pts, padPx){
+  let minx=Infinity,maxx=-Infinity,miny=Infinity,maxy=-Infinity;
+  for(const p of pts){ minx=Math.min(minx,p.x); maxx=Math.max(maxx,p.x); miny=Math.min(miny,p.y); maxy=Math.max(maxy,p.y); }
+  const w = Math.max(maxx-minx, 1e-3), h = Math.max(maxy-miny, 1e-3);
+  const availW = Math.max(rect.w - 2*padPx, 40), availH = Math.max(rect.h - 2*padPx, 40);
+  const scale = Math.min(availW/w, availH/h);
+  const cx = (minx+maxx)/2, cy = (miny+maxy)/2;
+  const target = {scale, cx, cy};
+  let st = views[key];
+  if(!st || reduce){ st = views[key] = {...target}; }
+  else {
+    const f = 0.20;
+    st.scale += (target.scale-st.scale)*f;
+    st.cx += (target.cx-st.cx)*f;
+    st.cy += (target.cy-st.cy)*f;
+  }
+  const v = mkView(rect);
+  v.scale = st.scale;
+  v.ox = rect.x + rect.w/2 - st.cx*st.scale;
+  v.oy = rect.y + rect.h/2 + st.cy*st.scale;
+  return v;
+}
+
+const STEPS = [0.1,0.2,0.25,0.5,1,2,2.5,5,10,20,25,50,100,200,500];
+function niceStep(scale){
+  for(const s of STEPS){ if(s*scale >= 26) return s; }
+  return STEPS[STEPS.length-1];
+}
+
+/* ---------- drawing primitives ---------- */
+function line(a,b,color,w,dash){
+  ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=w; if(dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); ctx.restore();
+}
+function arrow(a,b,color,{w=3, dash=null, filled=true, head=11}={}){
+  const dx=b.x-a.x, dy=b.y-a.y, L=Math.hypot(dx,dy);
+  if(L<1.5) return;
+  const ux=dx/L, uy=dy/L;
+  const hl = Math.min(head, L*0.55), hw = hl*0.52;
+  const bx = b.x-ux*hl, by = b.y-uy*hl;
+  ctx.save();
+  ctx.strokeStyle=color; ctx.lineWidth=w; ctx.lineCap="round";
+  if(dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(bx,by); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(b.x,b.y);
+  ctx.lineTo(bx-uy*hw, by+ux*hw);
+  ctx.lineTo(bx+uy*hw, by-ux*hw);
+  ctx.closePath();
+  if(filled){ ctx.fillStyle=color; ctx.fill(); }
+  else { ctx.fillStyle=P.surface; ctx.fill(); ctx.lineWidth=w*0.8; ctx.stroke(); }
+  ctx.restore();
+}
+function label(text, at, color, {size=14, bold=false, italic=false, bg=true, align="center", base="middle", dx=0, dy=0}={}){
+  ctx.save();
+  ctx.font = `${italic?"italic ":""}${bold?600:400} ${size}px "STIX Two Text", Georgia, serif`;
+  ctx.textAlign=align; ctx.textBaseline=base;
+  const x=at.x+dx, y=at.y+dy;
+  if(bg){
+    const m=ctx.measureText(text), pad=3.5;
+    const w=m.width+pad*2, h=size*0.95+pad*2;
+    let lx = align==="center" ? x-w/2 : align==="right" ? x-w : x;
+    let ly = base==="middle" ? y-h/2 : base==="top" ? y : y-h;
+    ctx.fillStyle=P.surface; ctx.globalAlpha=0.82;
+    ctx.beginPath(); ctx.roundRect(lx-1,ly,w+2,h,4); ctx.fill();
+    ctx.globalAlpha=1;
+  }
+  ctx.fillStyle=color; ctx.fillText(text,x,y);
+  ctx.restore();
+}
+function tipLabel(text, from, tip, color, opts={}){
+  const dx=tip.x-from.x, dy=tip.y-from.y, L=Math.hypot(dx,dy)||1;
+  const off = opts.off ?? 20;
+  label(text, V(tip.x+dx/L*off, tip.y+dy/L*off), color, {size:13, italic:true, ...opts});
+}
+function jlabel(text, at, color, {size=12, dx=0, dy=0, align="center", bg=false}={}){
+  ctx.save();
+  ctx.font=`500 ${size}px "Zen Kaku Gothic New", system-ui, sans-serif`;
+  ctx.textAlign=align; ctx.textBaseline="middle";
+  const x=at.x+dx, y=at.y+dy;
+  if(bg){
+    const w=ctx.measureText(text).width+10, h=size+9;
+    const lx = align==="center" ? x-w/2 : align==="right" ? x-w+5 : x-5;
+    ctx.fillStyle=P.surface; ctx.globalAlpha=.85;
+    ctx.beginPath(); ctx.roundRect(lx, y-h/2, w, h, 5); ctx.fill(); ctx.globalAlpha=1;
+  }
+  ctx.fillStyle=color; ctx.fillText(text, x, y); ctx.restore();
+}
+/* screen angles (y down). a1->a2 counter-clockwise on screen means decreasing angle */
+function arcAngle(c, a1, a2, r, color, text, {w=2, dash=null, tick=false}={}){
+  let d = a2-a1;
+  while(d> Math.PI) d-=2*Math.PI;
+  while(d<-Math.PI) d+=2*Math.PI;
+  ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=w; if(dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.arc(c.x,c.y,r,a1,a1+d,d<0); ctx.stroke();
+  ctx.restore();
+  if(tick){
+    const m=a1+d/2, r2=r+4.5;
+    line(V(c.x+Math.cos(m-0.06)*(r-4), c.y+Math.sin(m-0.06)*(r-4)),
+         V(c.x+Math.cos(m-0.06)*r2, c.y+Math.sin(m-0.06)*r2), color, 1.6);
+    line(V(c.x+Math.cos(m+0.06)*(r-4), c.y+Math.sin(m+0.06)*(r-4)),
+         V(c.x+Math.cos(m+0.06)*r2, c.y+Math.sin(m+0.06)*r2), color, 1.6);
+  }
+  if(text){
+    const m=a1+d/2, rr=r+16;
+    label(text, V(c.x+Math.cos(m)*rr, c.y+Math.sin(m)*rr), color, {size:14, italic:true, bold:true});
+  }
+}
+function sector(c, a1, a2, r, color, {fill=0.16, w=2, dash=null}={}){
+  let d=a2-a1; while(d>Math.PI) d-=2*Math.PI; while(d<-Math.PI) d+=2*Math.PI;
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(c.x,c.y); ctx.arc(c.x,c.y,r,a1,a1+d,d<0); ctx.closePath();
+  ctx.globalAlpha=fill; ctx.fillStyle=color; ctx.fill(); ctx.globalAlpha=1;
+  ctx.strokeStyle=color; ctx.lineWidth=w; if(dash) ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(c.x,c.y); ctx.arc(c.x,c.y,r,a1,a1+d,d<0); ctx.closePath(); ctx.stroke();
+  ctx.restore();
+}
+function fullLine(c, ang, R, color, w, dash){
+  line(V(c.x-Math.cos(ang)*R, c.y-Math.sin(ang)*R),
+       V(c.x+Math.cos(ang)*R, c.y+Math.sin(ang)*R), color, w, dash);
+}
+function rightAngle(c, d1, d2, s, color){
+  const p1=V(c.x+d1.x*s, c.y+d1.y*s), p2=V(c.x+d2.x*s, c.y+d2.y*s);
+  const p3=V(c.x+(d1.x+d2.x)*s, c.y+(d1.y+d2.y)*s);
+  ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=1.4; ctx.globalAlpha=.85;
+  ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p3.x,p3.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); ctx.restore();
+}
+
+/* ---------- grids ---------- */
+function drawGrid(v, rect, step){
+  const r=rect;
+  ctx.save(); ctx.beginPath(); ctx.rect(r.x,r.y,r.w,r.h); ctx.clip();
+  const x0=Math.floor((r.x-v.ox)/v.scale/step)*step, x1=Math.ceil((r.x+r.w-v.ox)/v.scale/step)*step;
+  const y0=Math.floor((v.oy-(r.y+r.h))/v.scale/step)*step, y1=Math.ceil((v.oy-r.y)/v.scale/step)*step;
+  for(let x=x0;x<=x1+1e-9;x+=step){
+    const sx=v.ox+x*v.scale;
+    const major = Math.abs(Math.round(x/step)%5)===0;
+    line(V(sx,r.y),V(sx,r.y+r.h), Math.abs(x)<1e-9?P.axis:(major?P.gridM:P.grid), Math.abs(x)<1e-9?1.4:1);
+  }
+  for(let y=y0;y<=y1+1e-9;y+=step){
+    const sy=v.oy-y*v.scale;
+    const major = Math.abs(Math.round(y/step)%5)===0;
+    line(V(r.x,sy),V(r.x+r.w,sy), Math.abs(y)<1e-9?P.axis:(major?P.gridM:P.grid), Math.abs(y)<1e-9?1.4:1);
+  }
+  ctx.restore();
+}
+function drawTiltGrid(v, rect, origin, th, step, alpha, radius){
+  if(alpha<=0.01) return;
+  const r=rect, o=w2s(v,origin);
+  const diag=Math.hypot(r.w,r.h)+40;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(r.x,r.y,r.w,r.h); ctx.clip();
+  if(radius){ ctx.beginPath(); ctx.arc(o.x,o.y,radius,0,7); ctx.clip(); }
+  ctx.globalAlpha=alpha; ctx.strokeStyle=P.tilt; ctx.lineWidth=1; ctx.setLineDash([4,5]);
+  const dirs=[{d:V(Math.cos(th),-Math.sin(th)), n:V(Math.sin(th),Math.cos(th))},
+              {d:V(Math.sin(th),Math.cos(th)),  n:V(Math.cos(th),-Math.sin(th))}];
+  const corners=[V(r.x,r.y),V(r.x+r.w,r.y),V(r.x,r.y+r.h),V(r.x+r.w,r.y+r.h)];
+  for(const {d,n} of dirs){
+    let lo=Infinity, hi=-Infinity;
+    for(const c of corners){ const p=(c.x-o.x)*n.x+(c.y-o.y)*n.y; lo=Math.min(lo,p); hi=Math.max(hi,p); }
+    const sp=step*v.scale;
+    for(let i=Math.floor(lo/sp); i<=Math.ceil(hi/sp); i++){
+      const off=i*sp;
+      const bx=o.x+n.x*off, by=o.y+n.y*off;
+      ctx.beginPath();
+      ctx.moveTo(bx-d.x*diag, by-d.y*diag);
+      ctx.lineTo(bx+d.x*diag, by+d.y*diag);
+      ctx.lineWidth = (i%5===0)?1.4:0.9;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+function hatchGround(v, a, b, depth){
+  const A=w2s(v,a), B=w2s(v,b);
+  ctx.save();
+  ctx.strokeStyle=P.hatch; ctx.lineWidth=1.2;
+  line(A,B,P.hatch,1.6);
+  const n=Math.max(2,Math.floor((B.x-A.x)/12));
+  for(let i=0;i<=n;i++){
+    const x=A.x+(B.x-A.x)*i/n;
+    line(V(x,B.y),V(x-depth,B.y+depth),P.hatch,1);
+  }
+  ctx.restore();
+}
+
+/* ---------- scenes ---------- */
+function lerpState(key, target, f){
+  if(reduce) return (lerpState.m ??= {})[key]=target;
+  const m = (lerpState.m ??= {});
+  if(m[key]===undefined) m[key]=target;
+  m[key]+= (target-m[key])*f;
+  return m[key];
+}
+
+function inclineGeom(theta, o={}){
+  const th=theta*D2R;
+  const A=V(0,0), C=V(LSLOPE*Math.cos(th),0), B=V(LSLOPE*Math.cos(th), LSLOPE*Math.sin(th));
+  const u=V(Math.cos(th),Math.sin(th));          // up-slope
+  const n=V(-Math.sin(th),Math.cos(th));         // outward normal
+  const bw=o.bw??1.15, bh=o.bh??1.15, slide=o.slide??0, tip=o.tip??0;
+  const contact=add(V(0.52*LSLOPE*Math.cos(th), 0.52*LSLOPE*Math.sin(th)), mul(u,-slide));
+  const c=add(contact, mul(n, bh/2));
+  const corner=add(contact, mul(u,-bw/2));       // the edge it would tip over
+  return {th,A,B,C,u,n,contact,c,corner,bw,bh,bs:bh,slide,tip};
+}
+/* local frame of the block: x up-slope from the tipping corner, y outward-negative */
+function blockL2S(v,g){
+  const o=w2s(v,g.corner), a=-g.th-g.tip, ca=Math.cos(a), sa=Math.sin(a), k=v.scale;
+  return (lx,ly)=>V(o.x + (lx*ca - ly*sa)*k, o.y + (lx*sa + ly*ca)*k);
+}
+
+function drawInclineBody(v, g, scene){
+  const A=w2s(v,g.A), B=w2s(v,g.B), C=w2s(v,g.C);
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(C.x,C.y); ctx.lineTo(B.x,B.y); ctx.closePath();
+  ctx.fillStyle=P.solid; ctx.fill();
+  ctx.strokeStyle=P.ink3; ctx.lineWidth=1.6; ctx.stroke();
+  ctx.restore();
+  if(scene==="inertia"){
+    const rr=Math.max(5, 0.22*v.scale);
+    for(const t of [0.22,0.78]){
+      const cx=A.x+(C.x-A.x)*t, cy=A.y+rr;
+      ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,rr,0,7); ctx.strokeStyle=P.ink3; ctx.lineWidth=1.6;
+      ctx.fillStyle=P.surface; ctx.fill(); ctx.stroke(); ctx.restore();
+    }
+    hatchGround(v, V(g.A.x-1.2, -2*rrWorld(v,rr)), V(g.C.x+1.2, -2*rrWorld(v,rr)), 9);
+  } else {
+    hatchGround(v, V(g.A.x-1.2,0), V(g.C.x+1.2,0), 9);
+  }
+  if(scene==="friction"){                        // a rough slope
+    const n=26;
+    for(let i=1;i<n;i++){
+      const p=w2s(v, V(g.B.x*i/n, g.B.y*i/n));
+      line(p, V(p.x - Math.sin(g.th)*5.5, p.y - Math.cos(g.th)*5.5), P.hatch, 1.4);
+    }
+  }
+}
+function rrWorld(v,px){ return px/v.scale; }
+
+function drawBlock(v,g){
+  const o=w2s(v,g.corner), k=v.scale, a=-g.th-g.tip;
+  ctx.save();
+  ctx.translate(o.x,o.y); ctx.rotate(a);
+  ctx.beginPath(); ctx.roundRect(0, -g.bh*k, g.bw*k, g.bh*k, Math.min(5, g.bw*k*0.12));
+  ctx.fillStyle=P.surface; ctx.fill();
+  ctx.strokeStyle=P.ink; ctx.lineWidth=1.8; ctx.stroke();
+  ctx.restore();
+  const L=blockL2S(v,g), c=L(g.bw/2,-g.bh/2);
+  ctx.save(); ctx.fillStyle=P.ink; ctx.beginPath(); ctx.arc(c.x,c.y,2.6,0,7); ctx.fill(); ctx.restore();
+  return c;
+}
+
+const TIP_MAX = Math.PI/2;                              // how far the block falls over
+function fricState(){
+  const th=state.theta*D2R, S=Math.sin(th), C=Math.cos(th);
+  const {mus,muk,rigid,aspect}=state.fr;
+  const wid=1.15, hei=rigid?1.15*aspect:1.15;
+  const N=MG*C, need=MG*S, fmax=mus*N;
+  const thSlip=Math.atan(mus)/D2R, thTip=Math.atan(wid/hei)/D2R;
+  const slipping = state.theta>thSlip+1e-9;
+  const ratio = slipping ? muk : Math.tan(th);         // f / N
+  const shiftRaw = hei/2*ratio;                        // where N acts, from the centre
+  const tipping = rigid && shiftRaw > wid/2 + 1e-9;
+  const f = slipping ? muk*N : need;
+  const shift = Math.min(wid/2, shiftRaw);
+  /* while sliding the shift no longer grows with θ, so tipping then depends on μ' alone */
+  const tipMode = thTip<thSlip ? "static" : (muk>wid/hei ? "onslip" : "never");
+  const tipAt = tipMode==="static" ? thTip : tipMode==="onslip" ? thSlip : null;
+  return {th,S,C,N,need,fmax,f,ratio,slipping,tipping,thSlip,thTip,tipMode,tipAt,wid,hei,shift,shiftRaw,
+          acc: G*(S-muk*C)};
+}
+
+function forceScene(v, rect, scene, stage){
+  const isF = scene==="friction";
+  const FR = isF ? fricState() : null;
+  const g = isF ? inclineGeom(state.theta,{slide:state.fr.slide, tip:state.fr.tip*TIP_MAX, bw:FR.wid, bh:FR.hei})
+                : inclineGeom(state.theta);
+  const th = g.th, S=Math.sin(th), Cc=Math.cos(th);
+  const c = g.c;
+  const isI = scene==="inertia";
+  const kx = isI ? state.k : 0;                    // a/g, rightward positive
+  const maMag = Math.abs(kx)*MG;
+  const Nmag = isF ? MG*Cc : Math.max(0, MG*Cc - kx*MG*S);
+  const alongNet = isF ? (FR.slipping&&!FR.tipping ? MG*S-FR.f : 0) : MG*S + kx*MG*Cc;
+  const cmp = !!state.compare && scene!=="projectile" && state.stage>=3;
+
+  drawGrid(v, rect, 1);
+  const tgA = lerpState(scene+"tg", stage>=2?1:0, .16);
+  const tgR = (MG + (isI?Math.abs(kx)*MG:0)*0.8 + 1.6)*v.scale;
+  const fxOn = stage===3 && state.fx.mode;
+  const gridTh = (fxOn && state.fx.mode==="rot") ? th*ease(state.fx.t) : th;
+  if(state.tilt){
+    drawTiltGrid(v, rect, c, gridTh, 1, 0.40*state.tiltA*tgA, tgR);
+    drawTiltGrid(v, rect, c, gridTh, 1, 0.45*state.tiltA*tgA, tgR*0.68);
+  }
+  drawInclineBody(v,g,scene);
+
+  /* acceleration of the cart */
+  if(isI){
+    const base = V(g.A.x + (g.C.x-g.A.x)/2, -2.9);
+    const aLen = Math.max(0.6, Math.abs(kx)*3.2);
+    if(Math.abs(kx)>0.02){
+      const dir = kx>0?1:-1;
+      const p1=w2s(v, V(base.x - dir*aLen/2, base.y)), p2=w2s(v, V(base.x + dir*aLen/2, base.y));
+      arrow(p1,p2,P.ink2,{w:2.6, head:10});
+      if(!cmp) jlabel("台の加速度 a", V((p1.x+p2.x)/2,(p1.y+p2.y)/2), P.ink2, {size:12, dy:-15, bg:true});
+    } else {
+      jlabel("台の加速度 a = 0", w2s(v,base), P.ink3, {size:12});
+    }
+  }
+
+  if(stage===3 && state.fx.mode!=="carry"){
+    const cs0=w2s(v,c), R=3.1*v.scale;
+    const ph = state.fx.mode==="rot" ? th*ease(state.fx.t) : th;
+    fullLine(cs0, 0, R, P.tilt, 1.4, [3,5]);
+    fullLine(cs0, Math.PI/2, R, P.vel, 1.4, [3,5]);
+    fullLine(cs0, -ph, R, P.tilt, 2.6);
+    fullLine(cs0, Math.PI/2-ph, R, P.vel, 2.6);
+  }
+
+  arcAngle(w2s(v,g.A), 0, -th, Math.max(30, 1.5*v.scale*0.55), P.ang, "θ", {tick:true});
+  rightAngle(w2s(v,g.C), V(-1,0), V(0,-1), 13, P.ink3);
+
+  const cs = drawBlock(v,g);
+  const L2S = blockL2S(v,g);
+  if(stage===0){
+    jlabel("物体", cs, P.ink3, {size:12, dy:-g.bh*v.scale*0.72});
+    return {g,Nmag,alongNet,maMag,kx};
+  }
+
+  const sv = (vec, from)=>V(from.x+vec.x*v.scale, from.y-vec.y*v.scale);
+  const tip = (vec)=>sv(vec, cs);
+  if(isF && state.fr.tip>0.02){
+    const ge = sv(V(0,-MG), cs);
+    arrow(cs, ge, P.grav, {w:3.2, head:12});
+    tipLabel("mg", cs, ge, P.grav, {size:15, bold:true, off:17});
+    jlabel("転倒", cs, P.ang, {size:13, dy:-g.bh*v.scale*0.55, bg:true});
+    return {g,Nmag,alongNet,maMag,kx};
+  }
+
+  const gravVec = V(0,-MG);
+  const inertVec = V(-kx*MG, 0);
+  const nVec = mul(g.n, Nmag);
+
+  /* stage 1+ : real forces */
+  const showDecomp = stage>=2;
+  const gcomp1 = mul(g.u, -MG*S);          // down-slope
+  const gcomp2 = mul(g.n, -MG*Cc);         // into surface
+  const icomp1 = mul(g.u, -kx*MG*Cc);      // along slope
+  const icomp2 = mul(g.n, kx*MG*S);        // along normal
+
+  const netStage = stage>=5;   // at the last step the slope-direction components merge into one net arrow
+
+  /* guides */
+  if(showDecomp){
+    const dash=[4,4];
+    const gt=tip(gravVec);
+    if(!netStage) line(gt, tip(gcomp1), P.grav, 1, dash);
+    line(gt, tip(gcomp2), P.grav, 1, dash);
+    if(isI && maMag>0.02){
+      const it=tip(inertVec);
+      if(!netStage) line(it, tip(icomp1), P.inertia, 1, dash);
+      line(it, tip(icomp2), P.inertia, 1, dash);
+    }
+  }
+
+  /* components (dashed, hollow head) */
+  if(showDecomp){
+    if(!netStage) arrow(cs, tip(gcomp1), P.grav, {w:2.2, dash:[7,4], filled:false, head:10});
+    arrow(cs, tip(gcomp2), P.grav, {w:2.2, dash:[7,4], filled:false, head:10});
+    if(isI && maMag>0.02){
+      if(!netStage) arrow(cs, tip(icomp1), P.inertia, {w:2.2, dash:[7,4], filled:false, head:10});
+      arrow(cs, tip(icomp2), P.inertia, {w:2.2, dash:[7,4], filled:false, head:10});
+    }
+  }
+
+  /* normal force: undetermined at stage 1, resolved from stage 2 */
+  const rigid = isF && state.fr.rigid;
+  const nBase = rigid ? L2S(g.bw/2 - FR.shift, 0) : cs;
+  const nTargetLen = stage>=2 ? Nmag : MG*0.5;
+  const nLen = lerpState(scene+"N", nTargetLen, reduce?1:.18);
+  const nEnd = sv(mul(g.n, nLen), nBase);
+  if(rigid){
+    const e1=L2S(0,0), e2=L2S(g.bw,0);
+    line(e1,e2,P.normal,3.2);                                  // the base it can tip over
+    /* the line of action through the centre: gravity while it grips,
+       apparent gravity (mg + ma) once it slides — it always lands on N */
+    const cross = L2S(g.bw/2 - Math.min(g.bw/2, FR.shiftRaw), 0);
+    const dx=cross.x-cs.x, dy=cross.y-cs.y;
+    line(cs, V(cs.x+dx*1.6, cs.y+dy*1.6), P.ink3, 1.3, [5,4]);
+    ctx.save(); ctx.fillStyle=P.ink3; ctx.beginPath(); ctx.arc(cross.x,cross.y,3.2,0,7); ctx.fill(); ctx.restore();
+    if(stage>=4) jlabel(FR.slipping?"見かけの重力の作用線":"重力の作用線",
+      V(cs.x+dx*1.62, cs.y+dy*1.62), P.ink3, {size:11, dy:12, bg:true});
+    if(stage>=4){
+      const m1=L2S(g.bw/2,0);
+      line(m1, nBase, P.normal, 1.6, [3,3]);
+      label(FR.slipping ? "(h/2)μ'" : "(h/2)tanθ",
+        V((m1.x+nBase.x)/2 + Math.sin(th)*30, (m1.y+nBase.y)/2 + Math.cos(th)*30),
+        P.normal, {size:11.5, italic:true});
+    }
+  }
+  arrow(nBase, nEnd, P.normal, {w:3, head:11, dash: stage>=2?null:[6,5]});
+  tipLabel(stage>=2 ? "N" : "N = ?", nBase, nEnd, P.normal, {size:15, bold:true, italic:stage>=2, off:18});
+
+  if(isF){
+    const fBase = rigid ? L2S(g.bw/2 - FR.shift, 0) : cs;
+    const fEnd = sv(mul(g.u, FR.f), fBase);
+    arrow(fBase, fEnd, P.fric, {w:3.2, head:12});
+    tipLabel(FR.slipping&&!FR.tipping ? "μ'N" : "f", fBase, fEnd, P.fric, {size:15, bold:true, off:17});
+  }
+
+  /* real forces */
+  arrow(cs, tip(gravVec), P.grav, {w:3.2, head:12});
+  tipLabel("mg", cs, tip(gravVec), P.grav, {size:15, bold:true, off:17});
+  if(isI && maMag>0.02){
+    arrow(cs, tip(inertVec), P.inertia, {w:3.2, head:12});
+    tipLabel("ma", cs, tip(inertVec), P.inertia, {size:15, bold:true, off:17});
+  }
+
+  /* component labels */
+  if(showDecomp && !cmp){
+    if(!netStage) tipLabel("mg sinθ", cs, tip(gcomp1), P.grav, {off:26});
+    tipLabel("mg cosθ", cs, tip(gcomp2), P.grav, {off:26});
+    if(isI && maMag>0.02){
+      if(!netStage) tipLabel("ma cosθ", cs, tip(icomp1), P.inertia, {off:26});
+      tipLabel("ma sinθ", cs, tip(icomp2), P.inertia, {off:26});
+    }
+  }
+
+  /* apparent gravity */
+  if(isI && state.showApparent && stage>=2 && maMag>0.02 && !cmp){
+    const app = add(gravVec, inertVec);
+    arrow(cs, tip(app), P.ang, {w:2.4, head:11, dash:[2,4]});
+    tipLabel("mg + ma", cs, tip(app), P.ang, {size:13, off:26});
+    const phi = Math.atan2(Math.abs(app.x), Math.abs(app.y))/D2R;
+    const a1=Math.PI/2, a2=Math.atan2(-app.y,app.x);
+    arcAngle(cs, a1, a2, Math.max(64, len(app)*v.scale*0.55), P.ang, `φ=${phi.toFixed(1)}°`, {w:1.6, dash:[3,3]});
+  }
+
+  /* angles */
+  if(stage>=3){
+    const reveal = stage>=4 || state.fx.mode==="rot"
+                 || (state.fx.mode==="carry" && state.fx.t>0.85);
+    if(reveal){
+      const aG1 = Math.atan2(1,0);                       // mg direction on screen (down)
+      const aG2 = Math.atan2(Cc, S);                     // into-surface component direction on screen
+      arcAngle(cs, aG1, aG2, 34, P.ang, "θ", {tick:true});
+    }
+    if(reveal && isI && maMag>0.02){
+      const dirI = V(-Math.sign(kx),0);
+      const aI1 = Math.atan2(0, dirI.x);
+      const cslope = icomp1;
+      const aI2 = Math.atan2(-cslope.y, cslope.x);
+      arcAngle(cs, aI1, aI2, cmp?38:64, P.ang, "θ", {tick:true});
+    }
+    if(showDecomp){
+      rightAngle(cs, V(g.u.x,-g.u.y), V(g.n.x,-g.n.y), 16, P.ink3);
+    }
+
+    /* --- why the two θ are the same angle --- */
+    if(stage===3 && state.fx.mode==="idle" && !cmp){
+      jlabel("2 つの方眼の軸は、どれだけずれている？", V(rect.x+rect.w/2, rect.y+22), P.ink2, {size:12.5, bg:true});
+    }
+    if(stage===3 && state.fx.mode && state.fx.mode!=="idle"){
+      const t = ease(state.fx.t);
+      const done = state.fx.t>0.995;
+      if(state.fx.mode==="rot"){
+        const ph = th*t;                                   // swept so far
+        const deg = (state.theta*t).toFixed(0)+"°";
+        arcAngle(cs, 0, -ph, 58, P.tilt, deg, {w:2.4});
+        arcAngle(cs, Math.PI/2, Math.PI/2-ph, 86, P.vel, deg, {w:2.4});
+        if(!cmp) jlabel(done ? "同じ1回の回転で、水平は斜面に・鉛直は法線に重なった"
+                             : "方眼ごと θ だけ回す",
+          V(rect.x+rect.w/2, rect.y+22), done?P.ang:P.ink2, {size:12.5, bg:true});
+      } else {
+        /* carry the base wedge up to the block */
+        const As = w2s(v,g.A);
+        let r1 = Math.PI/2;                                 // gravity: mg points down
+        if(isI && maMag>0.02) r1 = kx>0 ? Math.PI : 0;      // inertia: along the force itself
+        const rw = 46;
+        sector(As, 0, -th, Math.max(30,1.5*v.scale*0.55), P.ang, {fill:0.10, w:1.6, dash:[4,3]});
+        const mc = V(As.x+(cs.x-As.x)*t, As.y+(cs.y-As.y)*t);
+        const rot = r1*t;
+        sector(mc, rot, rot-th, rw, P.ang, {fill: done?0.22:0.16, w: done?3:2.2});
+        const turn = Math.abs(r1)<1e-6 ? "回さずに、そのまま運ぶ"
+                   : Math.abs(Math.abs(r1)-Math.PI/2)<1e-6 ? "90° 回してから運ぶ"
+                   : "180° 回して運ぶ";
+        jlabel(cmp ? turn : (done ? "ぴったり重なった" : turn),
+          V(rect.x+rect.w/2, rect.y+(cmp?46:22)), (done&&!cmp)?P.ang:P.ink2,
+          {size:cmp?11.5:12.5, bg:true});
+      }
+    }
+  }
+
+  /* stage 5: balance / net */
+  if(stage>=5){
+    const midN = add(c, mul(g.n, Math.max(nLen,MG*Cc)*0.5));
+    const lp = w2s(v, add(midN, mul(g.u, -1.3)));
+    jlabel("つり合う", lp, P.normal, {size:11.5, align:"right"});
+    const netDir = alongNet>=0 ? mul(g.u,-1) : g.u;
+    const netEnd = w2s(v, add(c, mul(netDir, Math.abs(alongNet))));
+    if(Math.abs(alongNet)>0.03){
+      arrow(cs, netEnd, P.ang, {w:4, head:13});
+      tipLabel(cmp?"合力":"斜面方向の合力", cs, netEnd, P.ang, {off:30, italic:false, size:12.5});
+    } else if(cmp){
+      jlabel("斜面方向の合力 = 0", V(rect.x+rect.w/2, rect.y+46), P.ang, {size:12.5, bg:true});
+    }
+  }
+  return {g,Nmag,alongNet,maMag,kx};
+}
+
+function projScene(rect, stage){
+  const th=state.theta*D2R, al=state.alpha*D2R;
+  const S=Math.sin(th), Cc=Math.cos(th);
+  const v0=state.v0;
+  const vperp = v0*Math.sin(al-th), vpar = v0*Math.cos(al-th);
+  const tEnd = Math.max(0.05, 2*vperp/(G*Cc));
+  state.tEnd = tEnd;
+  const pos = t => V(v0*Math.cos(al)*t, v0*Math.sin(al)*t - 0.5*G*t*t);
+  const vel = t => V(v0*Math.cos(al), v0*Math.sin(al) - G*t);
+  const land = pos(tEnd);
+  const along = vpar*tEnd - 0.5*G*S*tEnd*tEnd;
+
+  const pts=[V(0,0), land];
+  for(let i=0;i<=24;i++) pts.push(pos(tEnd*i/24));
+  pts.push(V(-0.28*land.x, -0.22*land.x));
+  const v = fitView("proj", rect, pts, 74);
+  const step = niceStep(v.scale);
+  drawGrid(v, rect, step);
+  if(state.tilt) drawTiltGrid(v, rect, V(0,0), th, step, 0.52*state.tiltA*lerpState('ptg', stage>=2?1:0, .16));
+
+  /* slope */
+  const far = V(land.x*1.16, land.x*1.16*Math.tan(th));
+  const O=w2s(v,V(0,0)), FAR=w2s(v,far);
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(O.x,O.y); ctx.lineTo(FAR.x,FAR.y); ctx.lineTo(FAR.x,O.y); ctx.closePath();
+  ctx.fillStyle=P.solid; ctx.fill(); ctx.strokeStyle=P.ink3; ctx.lineWidth=1.6; ctx.stroke();
+  ctx.restore();
+
+  const VS = Math.max(6, Math.min(15, 190/Math.max(v0,1)));   // px per (m/s)
+  const AS = 5.4;                                             // px per (m/s^2)
+
+  /* trajectory */
+  if(stage>=1){
+    ctx.save(); ctx.strokeStyle=P.vel; ctx.lineWidth=1.8; ctx.setLineDash([5,5]); ctx.globalAlpha=.7;
+    ctx.beginPath();
+    for(let i=0;i<=120;i++){ const p=w2s(v,pos(tEnd*i/120)); i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }
+    ctx.stroke(); ctx.restore();
+    const lp=w2s(v,land);
+    ctx.save(); ctx.fillStyle=P.vel; ctx.globalAlpha=.5; ctx.beginPath(); ctx.arc(lp.x,lp.y,4,0,7); ctx.fill(); ctx.restore();
+  }
+
+  /* moving ball + live velocity */
+  if(stage<1) state.t=0;
+  const t = Math.min(state.t, tEnd);
+  const bp = pos(t), bv = vel(t);
+  if(state.t>0){
+    ctx.save(); ctx.strokeStyle=P.vel; ctx.lineWidth=2.6; ctx.globalAlpha=.9;
+    ctx.beginPath();
+    for(let i=0;i<=100;i++){ const p=w2s(v,pos(t*i/100)); i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }
+    ctx.stroke(); ctx.restore();
+  }
+  const anchor = state.t>0 ? bp : V(0,0);
+  const av = state.t>0 ? bv : V(v0*Math.cos(al), v0*Math.sin(al));
+  const As = w2s(v,anchor);
+
+  if(state.t>0){
+    ctx.save(); ctx.beginPath(); ctx.arc(As.x,As.y,7,0,7);
+    ctx.fillStyle=P.surface; ctx.fill(); ctx.strokeStyle=P.ink; ctx.lineWidth=2; ctx.stroke(); ctx.restore();
+  }
+
+  const vtip = V(As.x+av.x*VS, As.y-av.y*VS);
+  if(stage>=1){
+    if(stage>=2){
+      const hx=V(As.x+av.x*VS, As.y), hy=V(As.x, As.y-av.y*VS);
+      line(vtip,hx,P.vel,1,[4,4]); line(vtip,hy,P.vel,1,[4,4]);
+      arrow(As,hx,P.vel,{w:2.2,dash:[7,4],filled:false,head:10});
+      arrow(As,hy,P.vel,{w:2.2,dash:[7,4],filled:false,head:10});
+      const upar = V(Cc,-S);
+      const dpar = av.x*Cc + av.y*S, dperp = -av.x*S + av.y*Cc;
+      const ppar = V(As.x+upar.x*dpar*VS, As.y+upar.y*dpar*VS);
+      const pp = V(As.x + (-S)*dperp*VS, As.y - (Cc)*dperp*VS);
+      line(vtip,ppar,P.tilt,1,[4,4]); line(vtip,pp,P.tilt,1,[4,4]);
+      arrow(As,ppar,P.tilt,{w:2.2,dash:[7,4],filled:false,head:10});
+      arrow(As,pp,P.tilt,{w:2.2,dash:[7,4],filled:false,head:10});
+      if(state.t===0){
+        label("v₀cosα", hx, P.vel, {size:12.5, italic:true, dy:16});
+        label("v₀sinα", hy, P.vel, {size:12.5, italic:true, dx:-30});
+        label("v₀cos(α−θ)", ppar, P.tilt, {size:12.5, italic:true, dy:-14});
+        label("v₀sin(α−θ)", pp, P.tilt, {size:12.5, italic:true, dx:-6, dy:-14});
+      }
+    }
+    arrow(As, vtip, P.vel, {w:3.2, head:12});
+    label(state.t>0?"v":"v₀", vtip, P.vel, {size:15, italic:true, bold:true, dx:12, dy:-8});
+  }
+
+  /* angles */
+  arcAngle(w2s(v,V(0,0)), 0, -th, 44, P.ang, "θ", {tick:true});
+  if(stage>=3){
+    const aHor = 0, aV = Math.atan2(-av.y, av.x), aSlope = -th;
+    const c0 = state.t>0? As : w2s(v,V(0,0));
+    arcAngle(c0, aHor, aV, 66, P.vel, state.t>0?"":"α", {w:1.8, dash:[4,3]});
+    arcAngle(c0, aSlope, aV, 92, P.tilt, state.t>0?"":"α−θ", {w:1.8});
+  }
+
+  /* stage 5: gravity decomposed in slope basis */
+  if(stage>=5){
+    const Gs = state.t>0 ? As : w2s(v, pos(tEnd*0.5));
+    if(state.t===0){
+      ctx.save(); ctx.beginPath(); ctx.arc(Gs.x,Gs.y,4.5,0,7);
+      ctx.fillStyle=P.surface; ctx.strokeStyle=P.vel; ctx.lineWidth=1.6; ctx.fill(); ctx.stroke(); ctx.restore();
+    }
+    const gs = V(Gs.x, Gs.y + G*AS);
+    const gpar = G*S, gperp = G*Cc;
+    const p1 = V(Gs.x + (-Cc)*gpar*AS, Gs.y + (S)*gpar*AS);
+    const p2 = V(Gs.x + (S)*gperp*AS, Gs.y + (Cc)*gperp*AS);
+    line(gs,p1,P.grav,1,[4,4]); line(gs,p2,P.grav,1,[4,4]);
+    arrow(Gs,p1,P.grav,{w:2.2,dash:[7,4],filled:false,head:10});
+    arrow(Gs,p2,P.grav,{w:2.2,dash:[7,4],filled:false,head:10});
+    arrow(Gs, gs, P.grav, {w:3, head:11});
+    label("g", gs, P.grav, {size:14, italic:true, bold:true, dx:13, dy:4});
+    label("g sinθ", p1, P.grav, {size:12.5, italic:true, dx:-14, dy:12});
+    label("g cosθ", p2, P.grav, {size:12.5, italic:true, dx:26});
+  }
+
+  /* readouts on canvas */
+  if(stage>=0){
+    const lp=w2s(v,land);
+    if(stage>=4){
+      jlabel(`斜面上の到達距離 ${along.toFixed(2)} m`, lp, P.ink2,
+        {size:12, dx:-Math.sin(th)*40, dy:-Math.cos(th)*40, bg:true});
+    }
+  }
+  return {tEnd, along, vpar, vperp};
+}
+
+/* ---------- angle vs friction graph ---------- */
+function drawFrGraph(rect, stage){
+  const FR=fricState(), TH=80, FM=MG*1.12;
+  const pad={l:52,r:18,t:22,b:30};
+  const x0=rect.x+pad.l, x1=rect.x+rect.w-pad.r, y0=rect.y+rect.h-pad.b, y1=rect.y+pad.t;
+  if(x1-x0<80 || y0-y1<50) return;
+  const X=t=>x0+(x1-x0)*t/TH, Y=f=>y0-(y0-y1)*f/FM;
+
+  ctx.save(); ctx.beginPath(); ctx.rect(rect.x,rect.y,rect.w,rect.h); ctx.clip();
+  for(let t=0;t<=TH;t+=10) line(V(X(t),y0),V(X(t),y1), t%20?P.grid:P.gridM, 1);
+  for(let f=0;f<=FM;f+=1) line(V(x0,Y(f)),V(x1,Y(f)), P.grid, 1);
+  line(V(x0,y0),V(x1,y0),P.axis,1.6); line(V(x0,y0),V(x0,y1),P.axis,1.6);
+  for(let t=0;t<=TH;t+=20) label(t+"°", V(X(t),y0+13), P.ink3, {size:11, bg:false});
+  for(let f=1;f<=Math.floor(FM);f++) label(String(f), V(x0-9,Y(f)), P.ink3, {size:11, bg:false, align:"right"});
+  jlabel("斜面の傾き θ", V(x1-4,y0+15), P.ink3, {size:11, align:"right"});
+  jlabel("摩擦力", V(x0-6,y1-9), P.ink3, {size:11, align:"right"});
+
+  const full = state.fr.full || stage>=5;
+  const thMax = full ? TH : Math.max(state.theta, state.fr.maxTh);
+
+  if(stage>=4 || full){                                   // the ceiling: maximum static friction
+    ctx.save(); ctx.strokeStyle=P.fric; ctx.lineWidth=1.6; ctx.setLineDash([6,4]); ctx.globalAlpha=.8;
+    ctx.beginPath();
+    for(let t=0;t<=TH;t+=1){ const p=V(X(t),Y(state.fr.mus*MG*Math.cos(t*D2R)));
+      t?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }
+    ctx.stroke(); ctx.restore();
+    label("μN（最大静止摩擦）", V(X(TH)-4, Y(state.fr.mus*MG*Math.cos(TH*D2R))-14), P.fric,
+      {size:11.5, align:"right"});
+  }
+
+  ctx.save(); ctx.strokeStyle=P.fric; ctx.lineWidth=2.8; ctx.lineJoin="round";
+  ctx.beginPath();                                        // static branch: f = mg sinθ
+  const tA=Math.min(thMax, FR.thSlip);
+  for(let t=0;t<=tA;t+=0.5){ const p=V(X(t),Y(MG*Math.sin(t*D2R))); t?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }
+  ctx.stroke();
+  if(thMax>FR.thSlip){                                    // the drop, then the kinetic branch
+    ctx.beginPath();
+    ctx.moveTo(X(FR.thSlip), Y(state.fr.mus*MG*Math.cos(FR.thSlip*D2R)));
+    ctx.lineTo(X(FR.thSlip), Y(state.fr.muk*MG*Math.cos(FR.thSlip*D2R)));
+    for(let t=FR.thSlip;t<=thMax;t+=0.5) ctx.lineTo(X(t),Y(state.fr.muk*MG*Math.cos(t*D2R)));
+    ctx.stroke();
+    const yA=Y(state.fr.mus*MG*Math.cos(FR.thSlip*D2R)), yB=Y(state.fr.muk*MG*Math.cos(FR.thSlip*D2R));
+    ctx.save(); ctx.strokeStyle=P.ang; ctx.lineWidth=1.4; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(X(FR.thSlip)+7,yA); ctx.lineTo(X(FR.thSlip)+7,yB); ctx.stroke(); ctx.restore();
+    jlabel("静止摩擦の最大値 ＞ 動摩擦", V(X(FR.thSlip)+13,(yA+yB)/2), P.ang, {size:11.5, align:"left", bg:true});
+  }
+  ctx.restore();
+
+  line(V(X(FR.thSlip),y0),V(X(FR.thSlip),y1), P.ink3, 1.2, [4,4]);
+  jlabel(`すべり出す ${FR.thSlip.toFixed(0)}°`, V(X(FR.thSlip), y1-9), P.ink3, {size:11, bg:true});
+  if(state.fr.rigid){
+    if(FR.tipAt!==null){
+      line(V(X(FR.tipAt),y0),V(X(FR.tipAt),y1), P.ink2, 1.2, [2,4]);
+      jlabel(`倒れる ${FR.tipAt.toFixed(0)}°`, V(X(FR.tipAt), y1+7), P.ink2, {size:11, bg:true});
+    } else {
+      jlabel("滑り出すと N のずれが一定になり、倒れない", V(X(TH)-6, y1+7), P.ink2, {size:11, align:"right", bg:true});
+    }
+  }
+
+  const fy=Y(FR.f), fx=X(state.theta);
+  line(V(fx,y0),V(fx,y1), P.ang, 1.6);
+  ctx.save(); ctx.beginPath(); ctx.arc(fx,fy,5,0,7);
+  ctx.fillStyle=P.fric; ctx.fill(); ctx.strokeStyle=P.surface; ctx.lineWidth=2; ctx.stroke(); ctx.restore();
+  label(FR.f.toFixed(2), V(fx+10,fy-12), P.fric, {size:12.5, bold:true, align:"left"});
+  ctx.restore();
+}
+
+/* ---------- frame ---------- */
+function layout(){
+  const dpr=Math.min(2.5, window.devicePixelRatio||1);
+  const r=cv.parentElement.getBoundingClientRect();
+  cv.width=Math.max(1,Math.round(r.width*dpr)); cv.height=Math.max(1,Math.round(r.height*dpr));
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {w:r.width,h:r.height};
+}
+
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  const {w,h}=layout();
+  ctx.clearRect(0,0,w,h);
+
+  if(state.fx.playing){
+    state.fx.t += dt/FX_DUR*state.fx.dir;
+    if(state.fx.t>=1){ state.fx.t=1; state.fx.playing=false; }
+    if(state.fx.t<=0){ state.fx.t=0; state.fx.playing=false; }
+    syncFx();
+  }
+  if(state.scene==="friction"){
+    const FR=fricState(), maxSlide=0.42*LSLOPE;
+    if(FR.tipping) state.fr.tip=Math.min(1, state.fr.tip+dt*0.9);
+    else if(state.fr.tip>0) state.fr.tip=Math.max(0, state.fr.tip-dt*2.5);
+    if(FR.slipping && !FR.tipping){
+      state.fr.vel += (FR.acc/G)*3.4*dt;
+      state.fr.slide = Math.min(maxSlide, state.fr.slide + state.fr.vel*dt);
+      if(state.fr.slide>=maxSlide) state.fr.vel=0;
+    } else if(state.fr.slide>0){
+      state.fr.slide=Math.max(0, state.fr.slide-dt*6); state.fr.vel=0;
+    }
+    state.fr.maxTh=Math.max(state.fr.maxTh, state.theta);
+  }
+  if(state.playing){
+    state.t += dt*state.speed;
+    if(state.t>=state.tEnd){ state.t=state.tEnd; state.playing=false; syncPlay(); }
+  }
+
+  if(state.scene==="projectile"){
+    projScene({x:0,y:0,w,h}, state.stage);
+    updateFlag(null);
+  } else if(state.scene==="friction"){
+    const showG = state.stage>=1;
+    const gh = showG ? Math.max(146, Math.min(252, h*0.34)) : 0;
+    const top={x:0,y:0,w,h:h-gh}, bot={x:0,y:h-gh,w,h:gh};
+    const FR=fricState();
+    const g=inclineGeom(state.theta,{slide:state.fr.slide, tip:state.fr.tip*TIP_MAX, bw:FR.wid, bh:FR.hei});
+    const v=fitView("single", top, cornerPts(g,"friction"), 44);
+    ctx.save(); ctx.beginPath(); ctx.rect(0,0,w,top.h); ctx.clip();
+    const res=forceScene(v, top, "friction", state.stage);
+    ctx.restore();
+    if(showG){ line(V(0,top.h),V(w,top.h),P.line,1); drawFrGraph(bot, state.stage); }
+    updateFlag(res);
+  } else if(state.compare && state.stage>=3){
+    const gap=1;
+    const r1={x:0,y:0,w:w/2-gap,h}, r2={x:w/2+gap,y:0,w:w/2-gap,h};
+    line(V(w/2,10),V(w/2,h-10),P.line,1);
+    const gg=inclineGeom(state.theta);
+    const shared=[...cornerPts(gg,"gravity"), ...cornerPts(gg,"inertia")];
+    for(const [rect,sc,ttl] of [[r1,"gravity","① 重力だけ"],[r2,"inertia","② 慣性力も加わる"]]){
+      const g=gg;
+      const v=fitView("cmp", rect, shared, 46);
+      ctx.save(); ctx.beginPath(); ctx.rect(rect.x,rect.y,rect.w,rect.h); ctx.clip();
+      forceScene(v, rect, sc, state.stage);
+      ctx.restore();
+      jlabel(ttl, V(rect.x+rect.w/2, rect.y+20), P.ink2, {size:12.5, bg:true});
+    }
+    jlabel("重力は θ が「垂直成分」との間に、慣性力は θ が「斜面方向の成分」との間に現れる",
+      V(w/2, h-16), P.ang, {size:12.5, bg:true});
+    updateFlag(null);
+  } else {
+    const g=inclineGeom(state.theta);
+    const v=fitView("single", {x:0,y:0,w,h}, cornerPts(g, state.scene), 58);
+    const res=forceScene(v, {x:0,y:0,w,h}, state.scene, state.stage);
+    updateFlag(res);
+  }
+  requestAnimationFrame(frame);
+}
+function cornerPts(g, scene){
+  const ma = scene==="inertia" ? Math.abs(state.k)*MG : 0;
+  const pad = MG + ma*0.75 + 1.0;
+  const pts=[g.A,g.B,g.C, V(g.A.x-1.4,-1.4), V(g.C.x+1.4,0)];
+  const rest = scene==="friction" ? inclineGeom(state.theta) : g;   // ignore the slide
+  pts.push(V(rest.c.x-pad, rest.c.y-pad), V(rest.c.x+pad, rest.c.y+pad));
+  if(scene==="inertia") pts.push(V(g.A.x, -3.4));
+  return pts;
+}
+requestAnimationFrame(frame);
+
+/* ---------- flags ---------- */
+const flag=document.getElementById("flag");
+function updateFlag(res){
+  if(!res){ flag.hidden=true; return; }
+  if(state.scene==="friction"){
+    const FR=fricState();
+    flag.hidden=false;
+    flag.className = (FR.slipping||FR.tipping) ? "flag warn" : "flag";
+    flag.textContent = FR.tipping ? `転倒した（N のずれが幅の半分を超えた）`
+      : FR.slipping ? `すべり出した（摩擦角 ${FR.thSlip.toFixed(0)}° を超えた）`
+      : `静止している（tan${state.theta}° = ${Math.tan(state.theta*D2R).toFixed(2)} ≤ μ = ${state.fr.mus.toFixed(2)}）`;
+    return;
+  }
+  if(state.scene==="inertia" && state.stage>=1){
+    const th=state.theta*D2R;
+    const N=MG*Math.cos(th)-state.k*MG*Math.sin(th);
+    if(N<=0.001){
+      flag.hidden=false; flag.className="flag warn";
+      flag.textContent="N = 0：物体は面から離れる";
+      return;
+    }
+    if(Math.abs(MG*Math.sin(th)+state.k*MG*Math.cos(th))<0.03){
+      flag.hidden=false; flag.className="flag";
+      flag.textContent="斜面方向の合力が 0：物体は斜面上で静止して見える";
+      return;
+    }
+  }
+  flag.hidden=true;
+}
+
+/* ---------- UI ---------- */
+const stepsEl=document.getElementById("steps"), promptEl=document.getElementById("prompt");
+const prevB=document.getElementById("prev"), nextB=document.getElementById("next");
+const eqCard=document.getElementById("eqCard"), eqEl=document.getElementById("eq"), eqHint=document.getElementById("eqHint");
+const sceneCtl=document.getElementById("sceneCtl");
+const tgTilt=document.getElementById("tgTilt"), tgCompare=document.getElementById("tgCompare");
+const tiltA=document.getElementById("tiltA"), tiltAV=document.getElementById("tiltAV");
+const thetaS=document.getElementById("theta"), thetaV=document.getElementById("thetaV");
+
+const REQ_FX = {gravity:"rot", inertia:"carry", friction:"rot"};
+function pendingFx(){
+  return state.stage===3 && state.scene!=="projectile" && state.fx.mode==="idle"
+       ? REQ_FX[state.scene] : null;
+}
+function syncNext(){
+  const S=SCENES[state.scene], pf=pendingFx();
+  nextB.textContent = pf ? (pf==="rot" ? "▶ 方眼を回す" : "▶ 角を運ぶ") : "次へ ▶";
+  nextB.disabled = !pf && state.stage===S.steps.length-1;
+}
+function goNext(){
+  const pf=pendingFx();
+  if(pf) setFxMode(pf, true); else setStage(state.stage+1);
+  syncNext();
+}
+function renderSteps(){
+  const S=SCENES[state.scene];
+  stepsEl.innerHTML="";
+  S.steps.forEach((s,i)=>{
+    const b=document.createElement("button");
+    b.innerHTML=`<i>${s[1]}</i><b>${s[0]}</b>`;
+    if(i===state.stage) b.setAttribute("aria-current","true");
+    else if(i<state.stage) b.className="done";
+    b.addEventListener("click",()=>setStage(i));
+    stepsEl.appendChild(b);
+  });
+  promptEl.textContent=S.prompts[state.stage];
+  prevB.disabled=state.stage===0;
+  syncNext();
+}
+function setStage(i){
+  const S=SCENES[state.scene];
+  state.stage=Math.max(0,Math.min(S.steps.length-1,i));
+  if(state.stage<3 && state.compare){ state.compare=false; tgCompare.checked=false; }
+  tgCompare.disabled = state.stage<3 || state.scene==="projectile" || state.scene==="friction";
+  tgCompare.parentElement.classList.toggle("off", tgCompare.disabled);
+  const wantFx = state.stage===3 && state.scene!=="projectile";   // ① ② ④ share the demonstration
+  if(wantFx && fxCard.hidden){ fxCard.hidden=false; setFxMode("idle", false); }
+  else if(!wantFx){ fxCard.hidden=true; state.fx.mode="idle"; state.fx.playing=false; state.fx.t=1; }
+  renderSteps(); renderEq();
+}
+prevB.onclick=()=>setStage(state.stage-1);
+nextB.onclick=goNext;
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT") return;
+  if(e.key==="ArrowRight"){ goNext(); e.preventDefault(); }
+  if(e.key==="ArrowLeft"){ setStage(state.stage-1); e.preventDefault(); }
+});
+
+document.getElementById("tabs").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-scene]"); if(!b) return;
+  state.scene=b.dataset.scene; state.stage=0; state.compare=false; tgCompare.checked=false;
+  state.t=0; state.playing=false;
+  state.fr.slide=0; state.fr.vel=0; state.fr.tip=0; state.fr.maxTh=0;
+  views={}; lerpState.m={};
+  [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-selected", x===b?"true":"false"));
+  document.querySelector(".canvas-wrap").classList.toggle("tall", state.scene==="friction");
+  renderSceneCtl(); setStage(0);
+});
+
+thetaS.addEventListener("input",()=>{
+  state.theta=+thetaS.value; thetaV.textContent=state.theta+"°";
+  const a=document.getElementById("alpha");
+  if(state.scene==="projectile" && a){
+    a.min=Math.min(86,state.theta+2);
+    if(state.alpha < +a.min){
+      state.alpha=+a.min; a.value=state.alpha;
+      document.getElementById("alphaV").textContent=state.alpha+"°";
+    }
+  }
+  state.t=0; state.playing=false; syncPlay(); renderEq();
+});
+thetaS.addEventListener("change",()=>{ state.fr.vel=0; });
+tgTilt.addEventListener("change",()=>{state.tilt=tgTilt.checked;});
+tgCompare.addEventListener("change",()=>{state.compare=tgCompare.checked;});
+tiltA.addEventListener("input",()=>{state.tiltA=+tiltA.value/100; tiltAV.textContent=tiltA.value+"%";});
+
+function renderSceneCtl(){
+  if(state.scene==="gravity"){
+    sceneCtl.innerHTML=`<p class="muted">重力 mg の大きさは方眼 4 目盛りに固定しています。成分の長さをマス目で数えられます。</p>`;
+  }
+  if(state.scene==="inertia"){
+    sceneCtl.innerHTML=`
+      <div class="field">
+        <div class="lab"><label for="kk">台の加速度 <span class="var">a</span></label><span class="val" id="kkV"></span></div>
+        <input type="range" id="kk" min="-200" max="200" step="1" value="${Math.round(state.k*100)}">
+      </div>
+      <div class="chips">
+        <button class="chip" id="balBtn">斜面方向がつり合う a にする</button>
+      </div>
+      <label class="tg" style="margin-top:11px"><input type="checkbox" id="tgApp"><span>見かけの重力（mg + ma）を描く</span></label>`;
+    const kk=document.getElementById("kk"), kkV=document.getElementById("kkV");
+    const show=()=>{
+      const a=state.k*G;
+      kkV.textContent=`${Math.abs(a).toFixed(1)} m/s² ${state.k>0.005?"右向き":state.k<-0.005?"左向き":""}`.trim();
+    };
+    kk.addEventListener("input",()=>{state.k=+kk.value/100; show(); renderEq();});
+    document.getElementById("balBtn").onclick=()=>{
+      state.k=Math.max(-2,Math.min(2,-Math.tan(state.theta*D2R)));
+      kk.value=Math.round(state.k*100); show(); renderEq();
+    };
+    document.getElementById("tgApp").addEventListener("change",e=>{state.showApparent=e.target.checked;});
+    show();
+  }
+  if(state.scene==="friction"){
+    sceneCtl.innerHTML=`
+      <div class="field">
+        <div class="lab"><label for="mus">静止摩擦係数 <span class="var">μ</span></label><span class="val" id="musV">${state.fr.mus.toFixed(2)}</span></div>
+        <input type="range" id="mus" min="10" max="120" step="1" value="${Math.round(state.fr.mus*100)}">
+      </div>
+      <div class="field">
+        <div class="lab"><label for="muk">動摩擦係数 <span class="var">μ'</span></label><span class="val" id="mukV">${state.fr.muk.toFixed(2)}</span></div>
+        <input type="range" id="muk" min="5" max="120" step="1" value="${Math.round(state.fr.muk*100)}">
+      </div>
+      <label class="tg"><input type="checkbox" id="tgRigid" ${state.fr.rigid?"checked":""}><span>剛体として扱う（倒れる／N の作用点）</span></label>
+      <div class="field" id="aspF" style="margin-top:11px; ${state.fr.rigid?"":"display:none"}">
+        <div class="lab"><label for="asp">高さ / 幅</label><span class="val" id="aspV">${state.fr.aspect.toFixed(1)}</span></div>
+        <input type="range" id="asp" min="40" max="320" step="5" value="${Math.round(state.fr.aspect*100)}">
+      </div>
+      <label class="tg" style="margin-top:11px"><input type="checkbox" id="tgFull" ${state.fr.full?"checked":""}><span>グラフを最後まで描く</span></label>
+      <div class="chips" style="margin-top:11px"><button class="chip" id="frReset">もとに戻す</button></div>`;
+    const mus=document.getElementById("mus"), muk=document.getElementById("muk");
+    const sync=()=>{
+      document.getElementById("musV").textContent=state.fr.mus.toFixed(2);
+      document.getElementById("mukV").textContent=state.fr.muk.toFixed(2);
+      state.fr.maxTh=0; renderEq();
+    };
+    mus.addEventListener("input",()=>{
+      state.fr.mus=+mus.value/100;
+      if(state.fr.muk>state.fr.mus){ state.fr.muk=state.fr.mus; muk.value=Math.round(state.fr.muk*100); }
+      sync();
+    });
+    muk.addEventListener("input",()=>{
+      state.fr.muk=Math.min(+muk.value/100, state.fr.mus);
+      muk.value=Math.round(state.fr.muk*100); sync();
+    });
+    document.getElementById("tgRigid").addEventListener("change",e=>{
+      state.fr.rigid=e.target.checked; state.fr.tip=0; state.fr.maxTh=0;
+      document.getElementById("aspF").style.display=e.target.checked?"":"none"; renderEq();
+    });
+    const asp=document.getElementById("asp");
+    asp.addEventListener("input",()=>{
+      state.fr.aspect=+asp.value/100;
+      document.getElementById("aspV").textContent=state.fr.aspect.toFixed(1); renderEq();
+    });
+    document.getElementById("tgFull").addEventListener("change",e=>{state.fr.full=e.target.checked;});
+    document.getElementById("frReset").onclick=()=>{
+      state.fr.slide=0; state.fr.vel=0; state.fr.tip=0; state.fr.maxTh=0;
+    };
+  }
+  if(state.scene==="projectile"){
+    sceneCtl.innerHTML=`
+      <div class="field">
+        <div class="lab"><label for="alpha">投射角 <span class="var">α</span>（水平から）</label><span class="val" id="alphaV">${state.alpha}°</span></div>
+        <input type="range" id="alpha" min="${state.theta+2}" max="88" step="1" value="${state.alpha}">
+      </div>
+      <div class="field">
+        <div class="lab"><label for="v0">初速 <span class="var">v</span>₀</label><span class="val" id="v0V">${state.v0.toFixed(1)} m/s</span></div>
+        <input type="range" id="v0" min="4" max="22" step="0.5" value="${state.v0}">
+      </div>
+      <div class="chips" style="margin-bottom:9px">
+        <button class="chip" id="playB">▶ 再生</button>
+        <button class="chip" id="stepB">コマ送り</button>
+        <button class="chip" id="resetB">最初から</button>
+      </div>
+      <div class="chips">
+        <button class="chip" data-sp="1">×1</button>
+        <button class="chip" data-sp="0.25">×0.25</button>
+        <button class="chip" data-sp="0.1">×0.1</button>
+      </div>`;
+    const al=document.getElementById("alpha");
+    al.addEventListener("input",()=>{
+      state.alpha=+al.value; document.getElementById("alphaV").textContent=state.alpha+"°";
+      state.t=0; state.playing=false; syncPlay(); renderEq();
+    });
+    const vv=document.getElementById("v0");
+    vv.addEventListener("input",()=>{
+      state.v0=+vv.value; document.getElementById("v0V").textContent=state.v0.toFixed(1)+" m/s";
+      state.t=0; state.playing=false; syncPlay(); renderEq();
+    });
+    document.getElementById("playB").onclick=()=>{
+      if(state.t>=state.tEnd) state.t=0;
+      state.playing=!state.playing; syncPlay();
+    };
+    document.getElementById("stepB").onclick=()=>{
+      state.playing=false; state.t=Math.min(state.tEnd, state.t+state.tEnd/24); syncPlay();
+    };
+    document.getElementById("resetB").onclick=()=>{state.t=0; state.playing=false; syncPlay();};
+    sceneCtl.querySelectorAll("[data-sp]").forEach(b=>{
+      b.setAttribute("aria-pressed", (+b.dataset.sp===state.speed)+"");
+      b.onclick=()=>{
+        state.speed=+b.dataset.sp;
+        sceneCtl.querySelectorAll("[data-sp]").forEach(x=>x.setAttribute("aria-pressed",(x===b)+""));
+      };
+    });
+  }
+  renderEq();
+}
+function syncPlay(){
+  const b=document.getElementById("playB");
+  if(b) b.textContent = state.playing ? "❚❚ 一時停止" : "▶ 再生";
+}
+
+/* ---------- step-3 demonstrations ---------- */
+const fxCard=document.getElementById("fxCard"), fxT=document.getElementById("fxT"),
+      fxTV=document.getElementById("fxTV"), fxPlay=document.getElementById("fxPlay"),
+      fxBack=document.getElementById("fxBack"), fxHint=document.getElementById("fxHint"),
+      fxModes=document.getElementById("fxModes");
+const FX_HINT={
+  idle:"山吹＝もとの水平が移った先、紫＝もとの鉛直が移った先。どちらへ何度ずれたか予想してから、下の「▶」を押してください。",
+  rot:"水平線は斜面へ、鉛直線は法線へ。同じ 1 回の回転で同時に移るので、2 つの角は「等しい」のではなく同じ角です。",
+  carry:"重力は 90° 回してから重なり、慣性力は回さずに重なる。この違いが sin と cos の入れ替わる理由です。"
+};
+function syncFx(){
+  const idle = state.fx.mode==="idle";
+  fxT.value=Math.round(state.fx.t*100); fxTV.textContent=idle?"—":fxT.value+"%";
+  fxT.disabled=idle; fxPlay.disabled=idle; fxBack.disabled=idle;
+  fxPlay.textContent = state.fx.playing && state.fx.dir>0 ? "❚❚ 停止" : "▶ 再生";
+  fxBack.textContent = state.fx.playing && state.fx.dir<0 ? "❚❚ 停止" : "◀ 逆再生";
+}
+function setFxMode(m, replay){
+  state.fx.mode=m;
+  fxHint.textContent=FX_HINT[m];
+  [...fxModes.children].forEach(b=>b.setAttribute("aria-pressed", (b.dataset.fx===m)+""));
+  if(replay){ state.fx.t = reduce?1:0; state.fx.dir=1; state.fx.playing=!reduce; }
+  else { state.fx.t=1; state.fx.playing=false; }
+  syncFx(); syncNext();
+}
+fxModes.addEventListener("click",e=>{
+  const b=e.target.closest("[data-fx]"); if(!b) return;
+  setFxMode(b.dataset.fx, true);
+});
+fxT.addEventListener("input",()=>{ state.fx.t=+fxT.value/100; state.fx.playing=false; syncFx(); });
+fxPlay.onclick=()=>{
+  if(state.fx.playing && state.fx.dir>0){ state.fx.playing=false; }
+  else { if(state.fx.t>=1) state.fx.t=0; state.fx.dir=1; state.fx.playing=true; }
+  syncFx();
+};
+fxBack.onclick=()=>{
+  if(state.fx.playing && state.fx.dir<0){ state.fx.playing=false; }
+  else { if(state.fx.t<=0) state.fx.t=1; state.fx.dir=-1; state.fx.playing=true; }
+  syncFx();
+};
+
+/* ---------- equations ---------- */
+function row(k,e,hl){ return `<div class="row${hl?" hl":""}"><span class="k">${k}</span><span class="e">${e}</span></div>`; }
+function renderEq(){
+  if(state.stage<4){ eqCard.hidden=true; return; }
+  eqCard.hidden=false;
+  const th=state.theta*D2R, S=Math.sin(th), C=Math.cos(th), t=state.theta.toFixed(0);
+  let html="", hint="";
+  if(state.scene==="gravity"){
+    const N=MG*C;
+    html = row("重力", `mg = ${MG.toFixed(2)}`)
+      + row("斜面方向", `mg sin${t}° = ${MG.toFixed(2)}×${S.toFixed(3)} = ${(MG*S).toFixed(2)}`)
+      + row("斜面に垂直", `mg cos${t}° = ${MG.toFixed(2)}×${C.toFixed(3)} = ${(MG*C).toFixed(2)}`)
+      + row("垂直抗力", `N = mg cos${t}° = ${N.toFixed(2)}`)
+      + row("残る力", `mg sin${t}° = ${(MG*S).toFixed(2)}（斜面下向き）`, true);
+    hint="数値の単位は方眼の目盛り。mg = 4.00 目盛りとしています。";
+  } else if(state.scene==="inertia"){
+    const ma=Math.abs(state.k)*MG, dir=state.k>0?"左向き":state.k<0?"右向き":"—";
+    const N=Math.max(0, MG*C - state.k*MG*S);
+    const net=MG*S + state.k*MG*C;
+    html = row("慣性力", `ma = ${ma.toFixed(2)}（${dir}）`)
+      + row("斜面方向", `ma cos${t}° = ${ma.toFixed(2)}×${C.toFixed(3)} = ${(ma*C).toFixed(2)}`)
+      + row("斜面に垂直", `ma sin${t}° = ${ma.toFixed(2)}×${S.toFixed(3)} = ${(ma*S).toFixed(2)}`)
+      + row("垂直抗力", `N = mg cos${t}° − ma<sub>x</sub> sin${t}° = ${N.toFixed(2)}`)
+      + row("斜面方向の合力", `mg sin${t}° ${state.k<0?"−":"+"} ma cos${t}° = ${net.toFixed(2)}`, true);
+    hint="重力は sin が斜面方向、慣性力は cos が斜面方向。θ の現れる場所が違うためです。";
+  } else if(state.scene==="friction"){
+    const FR=fricState(), t2=state.theta;
+    html = row("垂直抗力", `N = mg cos${t}° = ${FR.N.toFixed(2)}`)
+      + row("必要な摩擦力", `mg sin${t}° = ${FR.need.toFixed(2)}`)
+      + row("最大静止摩擦", `μN = ${state.fr.mus.toFixed(2)}×${FR.N.toFixed(2)} = ${FR.fmax.toFixed(2)}`)
+      + row("静止の条件", `tan${t}° = ${Math.tan(FR.th).toFixed(2)} ${FR.slipping?"＞":"≦"} μ = ${state.fr.mus.toFixed(2)}`, true)
+      + row("摩擦角", `θ = arctan μ = ${FR.thSlip.toFixed(1)}°`);
+    if(FR.slipping && !FR.tipping){
+      html += row("動摩擦力", `μ'N = ${state.fr.muk.toFixed(2)}×${FR.N.toFixed(2)} = ${(state.fr.muk*FR.N).toFixed(2)}`)
+        + row("加速度", `a = g(sin${t}° − μ'cos${t}°) = ${FR.acc.toFixed(2)} m/s²`, true);
+    }
+    if(state.fr.rigid){
+      html += row("N の作用点", FR.slipping
+          ? `(h/2)μ' = ${FR.shiftRaw.toFixed(2)}（θ によらず一定）`
+          : `(h/2)tan${t}° = ${FR.shiftRaw.toFixed(2)}`)
+        + row("転倒の条件", FR.slipping
+          ? `μ' = ${state.fr.muk.toFixed(2)} ${FR.tipping?"＞":"≦"} w/h = ${(FR.wid/FR.hei).toFixed(2)}`
+          : `tan${t}° = ${Math.tan(FR.th).toFixed(2)} ${FR.tipping?"＞":"≦"} w/h = ${(FR.wid/FR.hei).toFixed(2)}`, true);
+    }
+    hint = !state.fr.rigid
+      ? "静止の条件に質量が出てきません。だから重い物体でも軽い物体でも、すべり出す角は同じです。"
+      : FR.tipMode==="static" ? `倒れる角 ${FR.thTip.toFixed(0)}° のほうが摩擦角 ${FR.thSlip.toFixed(0)}° より小さい。滑るより先に倒れます。`
+      : FR.tipMode==="onslip" ? `先に ${FR.thSlip.toFixed(0)}° で滑り出しますが、滑走中のずれ (h/2)μ' も幅の半分を超えるため、滑り出した瞬間に倒れます。`
+      : `先に ${FR.thSlip.toFixed(0)}° で滑り出します。滑り出すと摩擦が μ' に下がるので N のずれは (h/2)μ' で一定になり、これ以上傾けても倒れません。`;
+  } else {
+    const al=state.alpha*D2R, v0=state.v0, a=state.alpha.toFixed(0);
+    const d=(state.alpha-state.theta).toFixed(0), dr=(al-th);
+    const tEnd=2*v0*Math.sin(dr)/(G*C);
+    const along=v0*Math.cos(dr)*tEnd - 0.5*G*S*tEnd*tEnd;
+    html = row("水平成分", `v₀cos${a}° = ${v0.toFixed(1)}×${Math.cos(al).toFixed(3)} = ${(v0*Math.cos(al)).toFixed(2)} m/s`)
+      + row("鉛直成分", `v₀sin${a}° = ${v0.toFixed(1)}×${Math.sin(al).toFixed(3)} = ${(v0*Math.sin(al)).toFixed(2)} m/s`)
+      + row("斜面平行", `v₀cos${d}° = ${(v0*Math.cos(dr)).toFixed(2)} m/s`)
+      + row("斜面垂直", `v₀sin${d}° = ${(v0*Math.sin(dr)).toFixed(2)} m/s`)
+      + row("着地までの時間", `t = 2v₀sin(α−θ)/(g cosθ) = ${tEnd.toFixed(2)} s`, true)
+      + row("斜面上の距離", `L = ${along.toFixed(2)} m`);
+    hint="斜面に垂直な方向だけを見ると、初速 v₀sin(α−θ)・加速度 g cosθ の鉛直投げ上げと同じ形になります。";
+  }
+  eqEl.innerHTML=html; eqHint.textContent=hint;
+}
+
+/* init */
+renderSceneCtl(); setStage(0);
+tgCompare.disabled=true; tgCompare.parentElement.classList.add("off");
+addEventListener("resize", ()=>{ views={}; });
+</script>
